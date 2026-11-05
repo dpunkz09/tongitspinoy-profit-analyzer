@@ -41,12 +41,6 @@ export const viewport: Viewport = {
   userScalable: false,
 };
 
-export const metadata: Metadata = {
-  title: "TongitsPinoy Profit Analyzer",
-  description:
-    "Calculate Diamond Consume and Accurate Profit for TongitsPinoy games. Developed by jpaworx.",
-};
-
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
