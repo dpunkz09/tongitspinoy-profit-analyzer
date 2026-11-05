@@ -54,6 +54,7 @@ interface Column {
   signed?: boolean;
   hint?: string;
   minWidth?: string;
+  sublabel?: string;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -156,8 +157,9 @@ const COLUMNS: Column[] = [
     kind: 'number',
     calculated: true,
     signed: true,
-    hint: 'Real Profit × Percentage',
+    hint: '(All Agent Real Profit × Percentage) × Agent Total Bet %',
     minWidth: 'min-w-[160px]',
+    sublabel: '(collab)',
   },
 ];
 
@@ -610,7 +612,7 @@ function BrandMark() {
   return (
     <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md">
       <img 
-        src="https://tongitspinoy.com/img_tg.png" 
+        src="/logo.png" 
         alt="TongitsPinoy Logo"
         className="h-full w-full object-contain"
       />
@@ -877,7 +879,7 @@ function Methodology() {
       <span className="mx-2 text-slate-300">|</span>
       <span className="font-medium text-slate-600">Real Profit</span> = Accurate Profit − Diamond Consume
       <span className="mx-2 text-slate-300">|</span>
-      <span className="font-medium text-slate-600">Real Profit %</span> = Real Profit × Percentage
+      <span className="font-medium text-slate-600">Real Profit %</span> = (All Agent Real Profit × Percentage) × Agent Total Bet %
     </p>
   );
 }
@@ -1053,6 +1055,11 @@ function GameView({ sheet, onPercentageChange }: { sheet: SheetData; onPercentag
     return new Set(isPhone ? MOBILE_DEFAULT_COLUMNS : COLUMNS.map((col) => col.key));
   });
   const [showColumnMenu, setShowColumnMenu] = useState(false);
+  const [columnWidths, setColumnWidths] = useState<Map<keyof GameData, number>>(new Map());
+  const [resizingColumn, setResizingColumn] = useState<keyof GameData | null>(null);
+  const [highlightedRow, setHighlightedRow] = useState<string | null>(null);
+  const resizeStartX = useRef<number>(0);
+  const resizeStartWidth = useRef<number>(0);
 
   const handlePercentageInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     setPercentText(e.target.value);
@@ -1074,6 +1081,60 @@ function GameView({ sheet, onPercentageChange }: { sheet: SheetData; onPercentag
       return next;
     });
   };
+
+  const handleRowClick = (agentId: string) => {
+    setHighlightedRow(highlightedRow === agentId ? null : agentId);
+  };
+
+  const handleResizeStart = (e: React.MouseEvent | React.TouchEvent, colKey: keyof GameData) => {
+    const th = (e.target as HTMLElement).closest('th');
+    if (!th) return;
+
+    setResizingColumn(colKey);
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    resizeStartX.current = clientX;
+    resizeStartWidth.current = th.offsetWidth;
+  };
+
+  useEffect(() => {
+    if (!resizingColumn) return;
+
+    // Prevent scrolling while resizing
+    const originalOverflow = document.body.style.overflow;
+    const originalTouchAction = document.body.style.touchAction;
+    document.body.style.overflow = 'hidden';
+    document.body.style.touchAction = 'none';
+
+    const handleMove = (e: MouseEvent | TouchEvent) => {
+      const clientX = 'touches' in e ? (e as TouchEvent).touches[0].clientX : (e as MouseEvent).clientX;
+      const delta = clientX - resizeStartX.current;
+      const newWidth = Math.max(80, resizeStartWidth.current + delta);
+      setColumnWidths((prev) => new Map(prev).set(resizingColumn, newWidth));
+    };
+
+    const handleEnd = () => {
+      setResizingColumn(null);
+      // Restore scrolling
+      document.body.style.overflow = originalOverflow;
+      document.body.style.touchAction = originalTouchAction;
+    };
+
+    // Add both mouse and touch listeners
+    document.addEventListener('mousemove', handleMove);
+    document.addEventListener('mouseup', handleEnd);
+    document.addEventListener('touchmove', handleMove, { passive: false });
+    document.addEventListener('touchend', handleEnd);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMove);
+      document.removeEventListener('mouseup', handleEnd);
+      document.removeEventListener('touchmove', handleMove);
+      document.removeEventListener('touchend', handleEnd);
+      // Restore in case of cleanup
+      document.body.style.overflow = originalOverflow;
+      document.body.style.touchAction = originalTouchAction;
+    };
+  }, [resizingColumn]);
 
   const filteredColumns = COLUMNS.filter((col) => visibleColumns.has(col.key));
 
@@ -1284,13 +1345,15 @@ function GameView({ sheet, onPercentageChange }: { sheet: SheetData; onPercentag
               <tr>
                 {filteredColumns.map((col, i) => {
                   const active = sort?.key === col.key;
+                  const width = columnWidths.get(col.key);
                   return (
                     <th
                       key={col.key}
                       scope="col"
                       title={col.hint}
                       aria-sort={active ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
-                      className={`sticky top-0 border-b border-slate-200 px-3 py-2.5 text-xs font-semibold uppercase tracking-wide whitespace-nowrap ${
+                      style={width ? { width: `${width}px`, minWidth: `${width}px`, maxWidth: `${width}px` } : undefined}
+                      className={`sticky top-0 border-b border-slate-200 px-3 py-2.5 text-xs font-semibold uppercase tracking-wide whitespace-nowrap relative ${
                         col.minWidth ?? ''
                       } ${col.key === 'agent' ? 'left-0 z-20' : 'z-10'} ${
                         col.calculated ? 'bg-blue-50 text-blue-900' : 'bg-slate-50 text-slate-600'
@@ -1303,12 +1366,26 @@ function GameView({ sheet, onPercentageChange }: { sheet: SheetData; onPercentag
                           col.align === 'right' ? 'flex-row-reverse' : ''
                         }`}
                       >
-                        {col.label}
+                        <span className="flex flex-col items-start">
+                          <span>{col.label}</span>
+                          {col.sublabel && (
+                            <span className="text-[9px] font-normal lowercase text-slate-500 -mt-0.5">
+                              {col.sublabel}
+                            </span>
+                          )}
+                        </span>
                         <Icon
                           name={active ? (sort.dir === 'asc' ? 'sort-asc' : 'sort-desc') : 'sort'}
                           className={`h-3.5 w-3.5 ${active ? 'text-slate-900' : 'text-slate-400'}`}
                         />
                       </button>
+                      {/* Resize Handle */}
+                      <div
+                        onMouseDown={(e) => handleResizeStart(e, col.key)}
+                        onTouchStart={(e) => handleResizeStart(e, col.key)}
+                        className="absolute right-0 top-0 h-full w-3 sm:w-1 cursor-col-resize hover:bg-blue-500 active:bg-blue-600 transition-colors"
+                        style={{ touchAction: 'none' }}
+                      />
                     </th>
                   );
                 })}
@@ -1323,45 +1400,72 @@ function GameView({ sheet, onPercentageChange }: { sheet: SheetData; onPercentag
                   </td>
                 </tr>
               ) : (
-                visibleRows.map((r, rowIndex) => (
-                  <tr key={`${r.agentId}-${rowIndex}`} className="group transition-colors hover:bg-slate-50">
-                    {filteredColumns.map((col, i) => (
-                      <td
-                        key={col.key}
-                        className={`border-b border-slate-100 px-3 py-2.5 whitespace-nowrap tabular-nums ${
-                          col.key === 'agent'
-                            ? 'sticky left-0 z-[1] bg-white font-medium text-slate-900 group-hover:bg-slate-50'
-                            : ''
-                        } ${col.align === 'right' ? 'text-right' : 'text-left'} ${
-                          col.calculated
-                            ? `bg-blue-50/40 font-medium group-hover:bg-blue-50 ${
-                                col.signed ? signTone(r[col.key] as number) : 'text-slate-900'
-                              }`
-                            : 'text-slate-700'
-                        } ${col.key === 'agentId' ? 'font-mono text-slate-600' : ''}`}
-                      >
-                        {renderValue(r, col)}
-                      </td>
-                    ))}
-                  </tr>
-                ))
+                visibleRows.map((r, rowIndex) => {
+                  const isHighlighted = highlightedRow === r.agentId;
+                  return (
+                    <tr 
+                      key={`${r.agentId}-${rowIndex}`} 
+                      className={`group transition-all duration-200 ${
+                        isHighlighted 
+                          ? 'bg-amber-100 hover:bg-amber-100 ring-2 ring-amber-400 ring-inset' 
+                          : 'hover:bg-slate-50'
+                      }`}
+                    >
+                    {filteredColumns.map((col, i) => {
+                      const value = renderValue(r, col);
+                      const tone = col.signed ? signTone(r[col.key] as number) : '';
+                      const width = columnWidths.get(col.key);
+                      const isAgentColumn = col.key === 'agent';
+                      
+                      return (
+                        <td
+                          key={col.key}
+                          style={width ? { width: `${width}px`, minWidth: `${width}px`, maxWidth: `${width}px` } : undefined}
+                          onClick={isAgentColumn ? () => handleRowClick(r.agentId) : undefined}
+                          className={`border-b border-slate-100 px-3 py-2.5 whitespace-nowrap tabular-nums ${
+                            col.key === 'agent'
+                              ? `sticky left-0 z-[1] font-medium text-slate-900 cursor-pointer select-none ${
+                                  isHighlighted 
+                                    ? 'bg-amber-100' 
+                                    : 'bg-white hover:bg-slate-100 group-hover:bg-slate-50'
+                                }`
+                              : ''
+                          } ${col.align === 'right' ? 'text-right' : 'text-left'} ${
+                            col.calculated
+                              ? `bg-blue-50/40 font-medium group-hover:bg-blue-50 ${
+                                  col.signed ? signTone(r[col.key] as number) : 'text-slate-900'
+                                }`
+                              : 'text-slate-700'
+                          } ${col.key === 'agentId' ? 'font-mono text-slate-600' : ''}`}
+                        >
+                          {value}
+                        </td>
+                      );
+                    })}
+                    </tr>
+                  );
+                })
               )}
             </tbody>
 
             <tfoot>
               <tr>
-                {filteredColumns.map((col, i) => (
-                  <td
-                    key={col.key}
-                    className={`sticky bottom-0 border-t-2 border-slate-300 bg-slate-100 px-3 py-3 font-semibold whitespace-nowrap tabular-nums ${
-                      col.key === 'agent' ? 'left-0 z-20' : 'z-10'
-                    } ${col.align === 'right' ? 'text-right' : 'text-left'} ${
-                      col.signed ? signTone(row[col.key] as number) : 'text-slate-900'
-                    }`}
-                  >
-                    {col.key === 'agent' ? '—' : renderValue(row, col)}
-                  </td>
-                ))}
+                {filteredColumns.map((col, i) => {
+                  const value = renderValue(row, col);
+                  const tone = col.signed ? signTone(row[col.key] as number) : '';
+                  const width = columnWidths.get(col.key);
+                  return (
+                    <td
+                      key={col.key}
+                      style={width ? { width: `${width}px`, minWidth: `${width}px`, maxWidth: `${width}px` } : undefined}
+                      className={`sticky bottom-0 border-t-2 border-slate-300 bg-slate-100 px-3 py-3 font-semibold whitespace-nowrap tabular-nums ${
+                        col.key === 'agent' ? 'left-0 z-20' : 'z-10'
+                      } ${col.align === 'right' ? 'text-right' : 'text-left'} ${tone}`}
+                    >
+                      {col.key === 'agent' ? '—' : value}
+                    </td>
+                  );
+                })}
               </tr>
             </tfoot>
           </table>
@@ -1392,12 +1496,19 @@ export default function Home() {
     setSheetsData((prevSheets) =>
       prevSheets.map((sheet) => {
         if (sheet.sheetName === sheetName) {
+          // Calculate total real profit for all agents (excluding summary row)
+          const agentRows = sheet.data.filter((row) => 
+            row.agent.toLowerCase().replace(/\s+/g, '') !== 'allplayers'
+          );
+          const totalRealProfit = agentRows.reduce((sum, row) => sum + row.realProfit, 0);
+
           return {
             ...sheet,
             percentageInput: percentage,
             data: sheet.data.map((row) => ({
               ...row,
-              realProfitPercent: (row.realProfit * percentage) / 100,
+              // New formula: (Total Real Profit × Percentage) × Agent Total Bet %
+              realProfitPercent: (totalRealProfit * percentage / 100) * (row.totalBetAmountPercent / 100),
             })),
           };
         }
