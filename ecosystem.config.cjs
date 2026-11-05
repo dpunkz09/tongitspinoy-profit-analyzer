@@ -1,10 +1,10 @@
 module.exports = {
   apps: [
     {
-      name: "tongitspinoy-profit-analyzer",
+      name: "tongitspinoy",
       cwd: "/var/www/jpaworx.com/tongitspinoy-profit-analyzer",
-      script: "node_modules/.bin/next",
-      args: "start",
+      script: "npm",
+      args: "start -p 6346",
       instances: 1,
       exec_mode: "fork",
       autorestart: true,
@@ -13,11 +13,7 @@ module.exports = {
       env: {
         NODE_ENV: "production",
         PORT: 6346,
-        HOSTNAME: "0.0.0.0",
       },
-      error_file: "./logs/err.log",
-      out_file: "./logs/out.log",
-      log_date_format: "YYYY-MM-DD HH:mm:ss Z",
       time: true,
     },
   ],
