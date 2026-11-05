@@ -99,8 +99,8 @@ const HEADER_ALIASES: Record<string, string[]> = {
 
 // Columns shown by default on phones; everything else is one tap away in the Columns menu.
 const MOBILE_DEFAULT_COLUMNS: ReadonlyArray<keyof GameData> = [
-  'agentId',
   'agent',
+  'agentId',
   'winnings',
   'betAmount',
   'diamondConsume',
@@ -110,8 +110,8 @@ const MOBILE_DEFAULT_COLUMNS: ReadonlyArray<keyof GameData> = [
 ];
 
 const COLUMNS: Column[] = [
-  { key: 'agentId', label: 'Agent ID', align: 'left', kind: 'text', minWidth: 'min-w-[96px] sm:min-w-[110px]' },
   { key: 'agent', label: 'Agent', align: 'left', kind: 'text', minWidth: 'min-w-[170px]' },
+  { key: 'agentId', label: 'Agent ID', align: 'left', kind: 'text', minWidth: 'min-w-[96px] sm:min-w-[110px]' },
   { key: 'players', label: 'Players', align: 'right', kind: 'count', minWidth: 'min-w-[100px]' },
   { key: 'winnings', label: 'Winnings', align: 'right', kind: 'number', minWidth: 'min-w-[130px]' },
   { key: 'diamondCost', label: 'Diamond Cost', align: 'right', kind: 'number', minWidth: 'min-w-[140px]' },
@@ -1065,8 +1065,8 @@ function GameView({ sheet, onPercentageChange }: { sheet: SheetData; onPercentag
     setVisibleColumns((prev) => {
       const next = new Set(prev);
       if (next.has(key)) {
-        // Don't allow hiding Agent ID and Agent columns
-        if (key === 'agentId' || key === 'agent') return prev;
+        // Don't allow hiding Agent column (primary identifier)
+        if (key === 'agent') return prev;
         next.delete(key);
       } else {
         next.add(key);
@@ -1213,7 +1213,7 @@ function GameView({ sheet, onPercentageChange }: { sheet: SheetData; onPercentag
                   <div className="max-h-[55dvh] overflow-y-auto p-2 sm:max-h-96">
                     {COLUMNS.map((col) => {
                       const isVisible = visibleColumns.has(col.key);
-                      const isRequired = col.key === 'agentId' || col.key === 'agent';
+                      const isRequired = col.key === 'agent';
                       return (
                         <label
                           key={col.key}
@@ -1292,7 +1292,7 @@ function GameView({ sheet, onPercentageChange }: { sheet: SheetData; onPercentag
                       aria-sort={active ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
                       className={`sticky top-0 border-b border-slate-200 px-3 py-2.5 text-xs font-semibold uppercase tracking-wide whitespace-nowrap ${
                         col.minWidth ?? ''
-                      } ${i === 0 ? 'left-0 z-20' : 'z-10'} ${
+                      } ${col.key === 'agent' ? 'left-0 z-20' : 'z-10'} ${
                         col.calculated ? 'bg-blue-50 text-blue-900' : 'bg-slate-50 text-slate-600'
                       } ${col.align === 'right' ? 'text-right' : 'text-left'}`}
                     >
@@ -1329,7 +1329,7 @@ function GameView({ sheet, onPercentageChange }: { sheet: SheetData; onPercentag
                       <td
                         key={col.key}
                         className={`border-b border-slate-100 px-3 py-2.5 whitespace-nowrap tabular-nums ${
-                          i === 0
+                          col.key === 'agent'
                             ? 'sticky left-0 z-[1] bg-white font-medium text-slate-900 group-hover:bg-slate-50'
                             : ''
                         } ${col.align === 'right' ? 'text-right' : 'text-left'} ${
@@ -1338,7 +1338,7 @@ function GameView({ sheet, onPercentageChange }: { sheet: SheetData; onPercentag
                                 col.signed ? signTone(r[col.key] as number) : 'text-slate-900'
                               }`
                             : 'text-slate-700'
-                        } ${col.key === 'agent' ? 'font-medium text-slate-900' : ''}`}
+                        } ${col.key === 'agentId' ? 'font-mono text-slate-600' : ''}`}
                       >
                         {renderValue(r, col)}
                       </td>
@@ -1354,12 +1354,12 @@ function GameView({ sheet, onPercentageChange }: { sheet: SheetData; onPercentag
                   <td
                     key={col.key}
                     className={`sticky bottom-0 border-t-2 border-slate-300 bg-slate-100 px-3 py-3 font-semibold whitespace-nowrap tabular-nums ${
-                      i === 0 ? 'left-0 z-20' : 'z-10'
+                      col.key === 'agent' ? 'left-0 z-20' : 'z-10'
                     } ${col.align === 'right' ? 'text-right' : 'text-left'} ${
                       col.signed ? signTone(row[col.key] as number) : 'text-slate-900'
                     }`}
                   >
-                    {i === 0 ? '—' : renderValue(row, col)}
+                    {col.key === 'agent' ? '—' : renderValue(row, col)}
                   </td>
                 ))}
               </tr>
