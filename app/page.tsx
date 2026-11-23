@@ -57,6 +57,25 @@ interface Column {
   sublabel?: string;
 }
 
+type OverviewKey =
+  | 'game'
+  | 'period'
+  | 'agents'
+  | 'players'
+  | 'betAmount'
+  | 'winnings'
+  | 'diamondConsume'
+  | 'accurateProfit'
+  | 'realProfit'
+  | 'realProfitPercent';
+
+interface OverviewColumn {
+  key: OverviewKey;
+  label: string;
+  align: 'left' | 'right';
+  calculated?: boolean;
+}
+
 /* -------------------------------------------------------------------------- */
 /*  Configuration                                                              */
 /* -------------------------------------------------------------------------- */
@@ -161,6 +180,30 @@ const COLUMNS: Column[] = [
     minWidth: 'min-w-[160px]',
     sublabel: '(collab)',
   },
+];
+
+// Columns of the Overview "Game summary" table, in display order.
+const OVERVIEW_COLUMNS: OverviewColumn[] = [
+  { key: 'game', label: 'Game', align: 'left' },
+  { key: 'period', label: 'Period', align: 'left' },
+  { key: 'agents', label: 'Agents', align: 'right' },
+  { key: 'players', label: 'Players', align: 'right' },
+  { key: 'betAmount', label: 'Bet Amount', align: 'right' },
+  { key: 'winnings', label: 'Winnings', align: 'right' },
+  { key: 'diamondConsume', label: 'Diamond Consume', align: 'right', calculated: true },
+  { key: 'accurateProfit', label: 'Accurate Profit', align: 'right', calculated: true },
+  { key: 'realProfit', label: 'Real Profit', align: 'right', calculated: true },
+  { key: 'realProfitPercent', label: 'Real Profit %', align: 'right', calculated: true },
+];
+
+// Overview columns shown by default on phones; the rest are one tap away in the Columns menu.
+const MOBILE_OVERVIEW_COLUMNS: ReadonlyArray<OverviewKey> = [
+  'game',
+  'betAmount',
+  'winnings',
+  'accurateProfit',
+  'realProfit',
+  'realProfitPercent',
 ];
 
 /* -------------------------------------------------------------------------- */
@@ -620,6 +663,98 @@ function BrandMark() {
   );
 }
 
+/** "Columns" button + show/hide checklist, shared by the Overview and game tables. */
+function ColumnMenu<K extends string>({
+  columns,
+  visible,
+  onToggle,
+  requiredKey,
+}: {
+  columns: ReadonlyArray<{ key: K; label: string; calculated?: boolean }>;
+  visible: ReadonlySet<K>;
+  onToggle: (key: K) => void;
+  /** Primary identifier column; it is shown checked and can't be hidden. */
+  requiredKey: K;
+}) {
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close the menu when clicking outside of it.
+  useEffect(() => {
+    if (!open) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [open]);
+
+  return (
+    <div className="relative" ref={menuRef}>
+      <button
+        type="button"
+        onClick={() => setOpen((prev) => !prev)}
+        className="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-50 sm:py-2"
+        aria-label="Toggle column visibility"
+        aria-expanded={open}
+      >
+        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+        </svg>
+        Columns
+      </button>
+
+      {open && (
+        <div className="fixed inset-x-4 top-24 z-50 rounded-lg border border-slate-200 bg-white shadow-lg sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-64">
+          <div className="border-b border-slate-200 px-4 py-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Show/Hide Columns
+            </p>
+          </div>
+          <div className="max-h-[55dvh] overflow-y-auto p-2 sm:max-h-96">
+            {columns.map((col) => {
+              const isRequired = col.key === requiredKey;
+              return (
+                <label
+                  key={col.key}
+                  className={`flex items-center gap-3 rounded px-3 py-2.5 text-sm transition-colors sm:py-2 ${
+                    isRequired ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:bg-slate-50'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={visible.has(col.key)}
+                    onChange={() => onToggle(col.key)}
+                    disabled={isRequired}
+                    className="h-5 w-5 rounded border-slate-300 text-blue-600 sm:h-4 sm:w-4 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 disabled:cursor-not-allowed"
+                  />
+                  <span className="flex-1 text-slate-700">
+                    {col.label}
+                    {col.calculated && <span className="ml-1 text-xs text-blue-600">(calc)</span>}
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+          <div className="border-t border-slate-200 px-4 py-3">
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="w-full rounded-md bg-slate-100 px-3 py-2.5 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-200 sm:py-1.5"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* -------------------------------------------------------------------------- */
 /*  Navigation                                                                 */
 /* -------------------------------------------------------------------------- */
@@ -912,9 +1047,173 @@ function OverviewView({
     [rows]
   );
 
-  const headCell =
-    'border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-slate-600 whitespace-nowrap';
+  const [visibleColumns, setVisibleColumns] = useState<Set<OverviewKey>>(() => {
+    const isPhone =
+      typeof window !== 'undefined' && window.matchMedia('(max-width: 639px)').matches;
+    return new Set(isPhone ? MOBILE_OVERVIEW_COLUMNS : OVERVIEW_COLUMNS.map((col) => col.key));
+  });
+
+  const toggleColumn = (key: OverviewKey) => {
+    setVisibleColumns((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        // Don't allow hiding Game column (primary identifier)
+        if (key === 'game') return prev;
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  };
+
+  const shownColumns = OVERVIEW_COLUMNS.filter((col) => visibleColumns.has(col.key));
+
+  const headBase =
+    'border-b border-slate-200 px-4 py-2.5 text-xs font-semibold uppercase tracking-wide whitespace-nowrap';
   const cell = 'border-b border-slate-100 px-4 py-3 tabular-nums whitespace-nowrap';
+  const footCell = 'border-t-2 border-slate-300 px-4 py-3';
+
+  type OverviewRow = (typeof rows)[number];
+
+  const renderCell = (col: OverviewColumn, { sheet, row, agents, computed }: OverviewRow) => {
+    switch (col.key) {
+      case 'game':
+        return (
+          <td key={col.key} className={`${cell} font-medium text-slate-900`}>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpen(sheet.sheetName);
+              }}
+              className="text-left text-blue-700 hover:underline focus:outline-none focus-visible:underline"
+            >
+              {sheet.sheetName}
+            </button>
+            {computed && (
+              <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-medium text-amber-800">
+                computed
+              </span>
+            )}
+          </td>
+        );
+      case 'period':
+        return (
+          <td key={col.key} className={`${cell} max-w-[260px] truncate text-slate-600`} title={sheet.dateRange}>
+            {sheet.dateRange || '—'}
+          </td>
+        );
+      case 'agents':
+        return (
+          <td key={col.key} className={`${cell} text-right text-slate-700`}>
+            {formatCount(agents)}
+          </td>
+        );
+      case 'players':
+        return (
+          <td key={col.key} className={`${cell} text-right text-slate-700`}>
+            {formatCount(row.players)}
+          </td>
+        );
+      case 'betAmount':
+        return (
+          <td key={col.key} className={`${cell} text-right text-slate-700`}>
+            {formatNumber(row.betAmount)}
+          </td>
+        );
+      case 'winnings':
+        return (
+          <td key={col.key} className={`${cell} text-right text-slate-700`}>
+            {formatNumber(row.winnings)}
+          </td>
+        );
+      case 'diamondConsume':
+        return (
+          <td key={col.key} className={`${cell} bg-blue-50/40 text-right font-medium text-slate-900`}>
+            {formatNumber(row.diamondConsume)}
+          </td>
+        );
+      case 'accurateProfit':
+        return (
+          <td key={col.key} className={`${cell} bg-blue-50/40 text-right font-semibold ${signTone(row.accurateProfit)}`}>
+            {formatNumber(row.accurateProfit)}
+          </td>
+        );
+      case 'realProfit':
+        return (
+          <td key={col.key} className={`${cell} bg-blue-50/40 text-right font-semibold ${signTone(row.realProfit)}`}>
+            {formatNumber(row.realProfit)}
+          </td>
+        );
+      case 'realProfitPercent':
+        return (
+          <td key={col.key} className={`${cell} bg-blue-50/40 text-right font-semibold ${signTone(row.realProfitPercent)}`}>
+            {formatNumber(row.realProfitPercent)}
+          </td>
+        );
+    }
+  };
+
+  const renderFootCell = (col: OverviewColumn) => {
+    switch (col.key) {
+      case 'game':
+        return (
+          <td key={col.key} className={footCell}>
+            All games
+          </td>
+        );
+      case 'period':
+        return (
+          <td key={col.key} className={`${footCell} text-slate-400`}>
+            —
+          </td>
+        );
+      case 'agents':
+      case 'players':
+        return (
+          <td key={col.key} className={`${footCell} text-right text-slate-400`}>
+            —
+          </td>
+        );
+      case 'betAmount':
+        return (
+          <td key={col.key} className={`${footCell} text-right tabular-nums`}>
+            {formatNumber(grand.bet)}
+          </td>
+        );
+      case 'winnings':
+        return (
+          <td key={col.key} className={`${footCell} text-right tabular-nums`}>
+            {formatNumber(grand.winnings)}
+          </td>
+        );
+      case 'diamondConsume':
+        return (
+          <td key={col.key} className={`${footCell} text-right tabular-nums`}>
+            {formatNumber(grand.consume)}
+          </td>
+        );
+      case 'accurateProfit':
+        return (
+          <td key={col.key} className={`${footCell} text-right tabular-nums ${signTone(grand.profit)}`}>
+            {formatNumber(grand.profit)}
+          </td>
+        );
+      case 'realProfit':
+        return (
+          <td key={col.key} className={`${footCell} text-right tabular-nums ${signTone(grand.realProfit)}`}>
+            {formatNumber(grand.realProfit)}
+          </td>
+        );
+      case 'realProfitPercent':
+        return (
+          <td key={col.key} className={`${footCell} text-right tabular-nums ${signTone(grand.realProfitPercent)}`}>
+            {formatNumber(grand.realProfitPercent)}
+          </td>
+        );
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -943,94 +1242,57 @@ function OverviewView({
         />
       </section>
 
-      <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-200 px-5 py-4">
-          <h2 className="text-sm font-semibold text-slate-900">Game summary</h2>
-          <p className="mt-0.5 text-sm text-slate-500">
-            Figures come from each sheet’s All Players row. Select a game to see its agents.
-          </p>
+      {/* No overflow-hidden here: it would clip the Columns dropdown. */}
+      <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
+        <div className="flex flex-col gap-3 border-b border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-sm font-semibold text-slate-900">Game summary</h2>
+            <p className="mt-0.5 text-sm text-slate-500">
+              Figures come from each sheet’s All Players row. Select a game to see its agents.
+            </p>
+          </div>
+
+          <div className="flex items-center">
+            <ColumnMenu
+              columns={OVERVIEW_COLUMNS}
+              visible={visibleColumns}
+              onToggle={toggleColumn}
+              requiredKey="game"
+            />
+          </div>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full border-separate border-spacing-0 text-sm">
             <thead>
               <tr>
-                <th className={`${headCell} text-left`}>Game</th>
-                <th className={`${headCell} text-left`}>Period</th>
-                <th className={`${headCell} text-right`}>Agents</th>
-                <th className={`${headCell} text-right`}>Players</th>
-                <th className={`${headCell} text-right`}>Bet Amount</th>
-                <th className={`${headCell} text-right`}>Winnings</th>
-                <th className={`${headCell} bg-blue-50 text-right text-blue-900`}>Diamond Consume</th>
-                <th className={`${headCell} bg-blue-50 text-right text-blue-900`}>Accurate Profit</th>
-                <th className={`${headCell} bg-blue-50 text-right text-blue-900`}>Real Profit</th>
-                <th className={`${headCell} bg-blue-50 text-right text-blue-900`}>Real Profit %</th>
+                {shownColumns.map((col) => (
+                  <th
+                    key={col.key}
+                    scope="col"
+                    className={`${headBase} ${
+                      col.calculated ? 'bg-blue-50 text-blue-900' : 'bg-slate-50 text-slate-600'
+                    } ${col.align === 'right' ? 'text-right' : 'text-left'}`}
+                  >
+                    {col.label}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
-              {rows.map(({ sheet, row, agents, computed }) => (
+              {rows.map((entry) => (
                 <tr
-                  key={sheet.sheetName}
-                  onClick={() => onOpen(sheet.sheetName)}
+                  key={entry.sheet.sheetName}
+                  onClick={() => onOpen(entry.sheet.sheetName)}
                   className="cursor-pointer transition-colors hover:bg-slate-50"
                 >
-                  <td className={`${cell} font-medium text-slate-900`}>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onOpen(sheet.sheetName);
-                      }}
-                      className="text-left text-blue-700 hover:underline focus:outline-none focus-visible:underline"
-                    >
-                      {sheet.sheetName}
-                    </button>
-                    {computed && (
-                      <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-medium text-amber-800">
-                        computed
-                      </span>
-                    )}
-                  </td>
-                  <td className={`${cell} max-w-[260px] truncate text-slate-600`} title={sheet.dateRange}>
-                    {sheet.dateRange || '—'}
-                  </td>
-                  <td className={`${cell} text-right text-slate-700`}>{formatCount(agents)}</td>
-                  <td className={`${cell} text-right text-slate-700`}>{formatCount(row.players)}</td>
-                  <td className={`${cell} text-right text-slate-700`}>{formatNumber(row.betAmount)}</td>
-                  <td className={`${cell} text-right text-slate-700`}>{formatNumber(row.winnings)}</td>
-                  <td className={`${cell} bg-blue-50/40 text-right font-medium text-slate-900`}>
-                    {formatNumber(row.diamondConsume)}
-                  </td>
-                  <td className={`${cell} bg-blue-50/40 text-right font-semibold ${signTone(row.accurateProfit)}`}>
-                    {formatNumber(row.accurateProfit)}
-                  </td>
-                  <td className={`${cell} bg-blue-50/40 text-right font-semibold ${signTone(row.realProfit)}`}>
-                    {formatNumber(row.realProfit)}
-                  </td>
-                  <td className={`${cell} bg-blue-50/40 text-right font-semibold ${signTone(row.realProfitPercent)}`}>
-                    {formatNumber(row.realProfitPercent)}
-                  </td>
+                  {shownColumns.map((col) => renderCell(col, entry))}
                 </tr>
               ))}
             </tbody>
             <tfoot>
               <tr className="bg-slate-100 font-semibold text-slate-900">
-                <td className="border-t-2 border-slate-300 px-4 py-3">All games</td>
-                <td className="border-t-2 border-slate-300 px-4 py-3 text-slate-400">—</td>
-                <td className="border-t-2 border-slate-300 px-4 py-3 text-right text-slate-400">—</td>
-                <td className="border-t-2 border-slate-300 px-4 py-3 text-right text-slate-400">—</td>
-                <td className="border-t-2 border-slate-300 px-4 py-3 text-right tabular-nums">{formatNumber(grand.bet)}</td>
-                <td className="border-t-2 border-slate-300 px-4 py-3 text-right tabular-nums">{formatNumber(grand.winnings)}</td>
-                <td className="border-t-2 border-slate-300 px-4 py-3 text-right tabular-nums">{formatNumber(grand.consume)}</td>
-                <td className={`border-t-2 border-slate-300 px-4 py-3 text-right tabular-nums ${signTone(grand.profit)}`}>
-                  {formatNumber(grand.profit)}
-                </td>
-                <td className={`border-t-2 border-slate-300 px-4 py-3 text-right tabular-nums ${signTone(grand.realProfit)}`}>
-                  {formatNumber(grand.realProfit)}
-                </td>
-                <td className={`border-t-2 border-slate-300 px-4 py-3 text-right tabular-nums ${signTone(grand.realProfitPercent)}`}>
-                  {formatNumber(grand.realProfitPercent)}
-                </td>
+                {shownColumns.map((col) => renderFootCell(col))}
               </tr>
             </tfoot>
           </table>
@@ -1054,7 +1316,6 @@ function GameView({ sheet, onPercentageChange }: { sheet: SheetData; onPercentag
       typeof window !== 'undefined' && window.matchMedia('(max-width: 639px)').matches;
     return new Set(isPhone ? MOBILE_DEFAULT_COLUMNS : COLUMNS.map((col) => col.key));
   });
-  const [showColumnMenu, setShowColumnMenu] = useState(false);
   const [columnWidths, setColumnWidths] = useState<Map<keyof GameData, number>>(new Map());
   const [resizingColumn, setResizingColumn] = useState<keyof GameData | null>(null);
   const [highlightedRow, setHighlightedRow] = useState<string | null>(null);
@@ -1173,22 +1434,6 @@ function GameView({ sheet, onPercentageChange }: { sheet: SheetData; onPercentag
 
   const { row } = summary;
 
-  // Close column menu when clicking outside
-  const columnMenuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (columnMenuRef.current && !columnMenuRef.current.contains(event.target as Node)) {
-        setShowColumnMenu(false);
-      }
-    };
-
-    if (showColumnMenu) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
-  }, [showColumnMenu]);
-
   return (
     <div className="space-y-6">
       <section
@@ -1251,68 +1496,12 @@ function GameView({ sheet, onPercentageChange }: { sheet: SheetData; onPercentag
             </div>
 
             {/* Column Visibility Toggle */}
-            <div className="relative" ref={columnMenuRef}>
-              <button
-                type="button"
-                onClick={() => setShowColumnMenu(!showColumnMenu)}
-                className="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-50 sm:py-2"
-                aria-label="Toggle column visibility"
-              >
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
-                </svg>
-                Columns
-              </button>
-
-              {showColumnMenu && (
-                <div className="fixed inset-x-4 top-24 z-50 rounded-lg border border-slate-200 bg-white shadow-lg sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-64">
-                  <div className="border-b border-slate-200 px-4 py-3">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      Show/Hide Columns
-                    </p>
-                  </div>
-                  <div className="max-h-[55dvh] overflow-y-auto p-2 sm:max-h-96">
-                    {COLUMNS.map((col) => {
-                      const isVisible = visibleColumns.has(col.key);
-                      const isRequired = col.key === 'agent';
-                      return (
-                        <label
-                          key={col.key}
-                          className={`flex items-center gap-3 rounded px-3 py-2.5 text-sm transition-colors sm:py-2 ${
-                            isRequired
-                              ? 'cursor-not-allowed opacity-50'
-                              : 'cursor-pointer hover:bg-slate-50'
-                          }`}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={isVisible}
-                            onChange={() => toggleColumn(col.key)}
-                            disabled={isRequired}
-                            className="h-5 w-5 rounded border-slate-300 text-blue-600 sm:h-4 sm:w-4 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 disabled:cursor-not-allowed"
-                          />
-                          <span className="flex-1 text-slate-700">
-                            {col.label}
-                            {col.calculated && (
-                              <span className="ml-1 text-xs text-blue-600">(calc)</span>
-                            )}
-                          </span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                  <div className="border-t border-slate-200 px-4 py-3">
-                    <button
-                      type="button"
-                      onClick={() => setShowColumnMenu(false)}
-                      className="w-full rounded-md bg-slate-100 px-3 py-2.5 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-200 sm:py-1.5"
-                    >
-                      Close
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
+            <ColumnMenu
+              columns={COLUMNS}
+              visible={visibleColumns}
+              onToggle={toggleColumn}
+              requiredKey="agent"
+            />
 
             <div className="relative">
               <Icon
