@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { renderValue, signTone } from '../_lib/format';
 import type { Column, ColumnKey, GameData, SortState } from '../_lib/types';
 import { Icon } from './Icon';
+import { ZoomableTable } from './ZoomableTable';
 
 const MIN_WIDTH = 80;
 
@@ -16,6 +17,8 @@ export function AgentTable({
   highlighted,
   onHighlight,
   emptyText,
+  zoom,
+  onZoomChange,
 }: {
   columns: Column[];
   rows: GameData[];
@@ -25,6 +28,8 @@ export function AgentTable({
   highlighted: string | null;
   onHighlight: (rowId: string) => void;
   emptyText: string;
+  zoom: number;
+  onZoomChange: (zoom: number) => void;
 }) {
   const [widths, setWidths] = useState<Partial<Record<ColumnKey, number>>>({});
 
@@ -63,7 +68,11 @@ export function AgentTable({
   };
 
   return (
-    <div className="isolate max-h-[68dvh] overflow-auto overscroll-x-contain">
+    <ZoomableTable
+      zoom={zoom}
+      onZoomChange={onZoomChange}
+      className="isolate max-h-[68dvh] overflow-auto overscroll-x-contain"
+    >
       <table className="w-full border-separate border-spacing-0 text-sm">
         <thead>
           <tr>
@@ -198,6 +207,6 @@ export function AgentTable({
           </tr>
         </tfoot>
       </table>
-    </div>
+    </ZoomableTable>
   );
 }

@@ -72,10 +72,14 @@ export interface OverviewColumn {
 
 export type Layout = 'cards' | 'table';
 
+/** Each table remembers its own zoom level. */
+export type ZoomTarget = 'overview' | 'agents';
+
 /** Choices remembered between visits. `null` columns mean "use the screen's default". */
 export interface Prefs {
   percents: Record<string, string>;
   agentColumns: ColumnKey[] | null;
   overviewColumns: OverviewKey[] | null;
   mobileLayout: Layout;
+  tableZoom: Record<ZoomTarget, number>;
 }

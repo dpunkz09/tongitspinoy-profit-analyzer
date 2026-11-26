@@ -4,6 +4,10 @@ export const APP_NAME = 'TongitsPinoy Profit Analyzer';
 export const DEVELOPER = 'developed by jpaworx';
 export const OVERVIEW = '__overview__';
 
+/** Pinch-zoom limits for the tables (1 = normal size). */
+export const MIN_ZOOM = 0.4;
+export const MAX_ZOOM = 2;
+
 /** Room Quota Diamond Cost is divided by this to get Diamond Consume. */
 export const DIAMOND_DIVISOR = 44;
 

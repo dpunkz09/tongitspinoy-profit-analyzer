@@ -9,6 +9,7 @@ export const DEFAULT_PREFS: Prefs = {
   agentColumns: null,
   overviewColumns: null,
   mobileLayout: 'cards',
+  tableZoom: { overview: 1, agents: 1 },
 };
 
 export interface SavedData {
@@ -55,5 +56,13 @@ export function loadData(): SavedData | null {
 export const saveData = (data: SavedData) => write(DATA_KEY, data);
 export const clearData = () => remove(DATA_KEY);
 
-export const loadPrefs = (): Prefs => ({ ...DEFAULT_PREFS, ...read<Partial<Prefs>>(PREFS_KEY) });
+export function loadPrefs(): Prefs {
+  const saved = read<Partial<Prefs>>(PREFS_KEY);
+  return {
+    ...DEFAULT_PREFS,
+    ...saved,
+    // Older saves have no zoom, and a partial one must not drop the other table's value.
+    tableZoom: { ...DEFAULT_PREFS.tableZoom, ...saved?.tableZoom },
+  };
+}
 export const savePrefs = (prefs: Prefs) => write(PREFS_KEY, prefs);

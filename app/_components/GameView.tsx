@@ -29,6 +29,8 @@ export function GameView({
   isPhone,
   mobileLayout,
   onLayoutChange,
+  zoom,
+  onZoomChange,
 }: {
   sheet: SheetData;
   percentText: string;
@@ -40,6 +42,8 @@ export function GameView({
   isPhone: boolean;
   mobileLayout: Layout;
   onLayoutChange: (layout: Layout) => void;
+  zoom: number;
+  onZoomChange: (zoom: number) => void;
 }) {
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<SortState>(null);
@@ -293,6 +297,8 @@ export function GameView({
             highlighted={highlighted}
             onHighlight={toggleHighlight}
             emptyText={emptyText}
+            zoom={zoom}
+            onZoomChange={onZoomChange}
           />
         )}
 

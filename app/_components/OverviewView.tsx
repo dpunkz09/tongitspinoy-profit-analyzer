@@ -8,6 +8,7 @@ import { formatCount, formatNumber, signTone } from '../_lib/format';
 import type { Layout, OverviewColumn, OverviewKey, SheetData, SheetTotals } from '../_lib/types';
 import { Icon } from './Icon';
 import { BUTTON, ColumnMenu, Kpi, LayoutToggle, Methodology } from './ui';
+import { ZoomableTable } from './ZoomableTable';
 
 type OverviewRow = SheetTotals & { sheet: SheetData };
 
@@ -96,6 +97,8 @@ export function OverviewView({
   isPhone,
   mobileLayout,
   onLayoutChange,
+  zoom,
+  onZoomChange,
 }: {
   sheets: SheetData[];
   onOpen: (sheetName: string) => void;
@@ -104,6 +107,8 @@ export function OverviewView({
   isPhone: boolean;
   mobileLayout: Layout;
   onLayoutChange: (layout: Layout) => void;
+  zoom: number;
+  onZoomChange: (zoom: number) => void;
 }) {
   const rows = useMemo<OverviewRow[]>(
     () => sheets.map((sheet) => ({ sheet, ...buildSummary(sheet) })),
@@ -252,7 +257,11 @@ export function OverviewView({
             ))}
           </ul>
         ) : (
-          <div className="isolate overflow-x-auto overscroll-x-contain">
+          <ZoomableTable
+            zoom={zoom}
+            onZoomChange={onZoomChange}
+            className="isolate overflow-x-auto overscroll-x-contain"
+          >
             <table className="w-full border-separate border-spacing-0 text-sm">
               <thead>
                 <tr>
@@ -298,7 +307,7 @@ export function OverviewView({
                 </tr>
               </tfoot>
             </table>
-          </div>
+          </ZoomableTable>
         )}
 
         <div className="border-t border-slate-200 px-4 py-1 sm:px-5">

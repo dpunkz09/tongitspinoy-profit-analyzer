@@ -18,7 +18,7 @@ import {
 import { useIsPhone } from './_lib/hooks';
 import { loadXlsx, readWorkbook } from './_lib/parse';
 import { DEFAULT_PREFS, clearData, loadData, loadPrefs, saveData, savePrefs } from './_lib/storage';
-import type { Notice, Prefs, SheetData } from './_lib/types';
+import type { Notice, Prefs, SheetData, ZoomTarget } from './_lib/types';
 
 const toggled = <T,>(list: T[], item: T): T[] =>
   list.includes(item) ? list.filter((x) => x !== item) : [...list, item];
@@ -95,6 +95,9 @@ export default function Home() {
     syncHistory(view);
     setActiveView(view);
   };
+
+  const setZoom = (target: ZoomTarget, zoom: number) =>
+    setPrefs((prev) => ({ ...prev, tableZoom: { ...prev.tableZoom, [target]: zoom } }));
 
   const setPercent = (sheetName: string, text: string) =>
     setPrefs((prev) => ({ ...prev, percents: { ...prev.percents, [sheetName]: text } }));
@@ -238,6 +241,8 @@ export default function Home() {
         isPhone={isPhone}
         mobileLayout={prefs.mobileLayout}
         onLayoutChange={(mobileLayout) => updatePrefs({ mobileLayout })}
+        zoom={prefs.tableZoom.agents}
+        onZoomChange={(zoom) => setZoom('agents', zoom)}
       />
     );
   } else {
@@ -250,6 +255,8 @@ export default function Home() {
         isPhone={isPhone}
         mobileLayout={prefs.mobileLayout}
         onLayoutChange={(mobileLayout) => updatePrefs({ mobileLayout })}
+        zoom={prefs.tableZoom.overview}
+        onZoomChange={(zoom) => setZoom('overview', zoom)}
       />
     );
   }
