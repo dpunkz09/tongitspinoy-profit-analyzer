@@ -17,10 +17,17 @@ export const metadata: Metadata = {
   description:
     "Calculate Diamond Consume and Accurate Profit for TongitsPinoy games. Developed by jpaworx.",
   manifest: "/manifest.json",
+  icons: {
+    apple: "/icon-192.png",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
     title: "TP Profit",
+  },
+  // Older iOS versions still look for the Apple-prefixed tag.
+  other: {
+    "apple-mobile-web-app-capable": "yes",
   },
   formatDetection: {
     telephone: false,
@@ -37,8 +44,9 @@ export const viewport: Viewport = {
   themeColor: "#2563eb",
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  // Lets the app use the whole screen on notched phones (safe areas are padded in CSS).
+  // Pinch-zoom is left enabled so small figures can be magnified.
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -47,11 +55,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <head>
-        <link rel="apple-touch-icon" href="/icon-192.png" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-      </head>
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );
